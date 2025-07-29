@@ -3,8 +3,8 @@
 機能追加は pdr.py の PDR クラスで行ってください。
 """
 
-import pandas as pd
 from pathlib import Path
+import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 import numpy as np
@@ -15,18 +15,16 @@ class Results:
     map_file = "miraikan_5.bmp"
     results: list[Position] = []
 
-    map_dir = Path().resolve() / "map"
-    bitmap_array = np.array(Image.open(map_dir / map_file)) / 255.0
-
     map_origin = (-5.625, -12.75)
     map_ppm = 100
 
-    def __init__(self, initial_position=Position(0, 0, 0)):
+    def __init__(self, map_file: str | Path, initial_position=Position(0, 0, 0)):
         """
         初期化処理
         推定結果を保存するリストを初期化する
         """
         self.results = [initial_position]
+        self.bitmap_array = np.array(Image.open(map_file)) / 255.0
 
     def append(self, position: Position):
         """

@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 
-class PDR:
+class DataProvider:
     """
     PDRのベースクラス
     データの読み込みとイテレータの実装を行う
@@ -28,7 +28,7 @@ class PDR:
     gyro_file = "gyro.csv"
     data_dir = Path().resolve() / "data"
 
-    def __init__(self, maxwait=0.5):
+    def __init__(self, acce_file: str | Path, gyro_file: str | Path, maxwait=0.5):
         """
         初期化処理
         データを読み込む
