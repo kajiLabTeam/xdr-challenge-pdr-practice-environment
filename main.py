@@ -13,7 +13,6 @@ def main():
     dataprovider = DataProvider(acce_file=acce_file, gyro_file=gyro_file, maxwait=0.5)
     results = Results(map_file=map_file, initial_position=Position(0, 0, 0))
 
-    c = 0
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
         # 直前の推定位置
         last_position = results[-1]
