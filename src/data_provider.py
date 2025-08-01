@@ -1,6 +1,6 @@
 """
 xDR Challenge の環境を再現するための、PDRのベースクラスを定義しています。
-機能追加は pdr.py の PDR クラスで行ってください。
+このファイルは触る必要はありません。
 """
 
 import pandas as pd
@@ -78,7 +78,7 @@ class DataProvider:
             フィルタリングされたデータフレーム
         """
         if only_end:
-            return df[df["app_timestamp"] >= timestamp + window]
+            return df[df["app_timestamp"] <= timestamp + window]
         else:
             # ウィンドウの開始から終了までの範囲でデータを取得
             return df[
@@ -117,4 +117,4 @@ class DataProvider:
 
         self.current_timestamp += self.maxwait
 
-        return acce_df, gyro_df, acce_all_df, gyro_all_df
+        return acce_df.copy(), gyro_df.copy(), acce_all_df.copy(), gyro_all_df.copy()
