@@ -28,7 +28,9 @@ class DataProvider:
     gyro_file = "gyro.csv"
     data_dir = Path().resolve() / "data"
 
-    def __init__(self, acce_file: str | Path, gyro_file: str | Path, maxwait=0.5):
+    def __init__(
+        self, acce_file: str | Path, gyro_file: str | Path, maxwait=0.5, offline=False
+    ):
         """
         初期化処理
         データを読み込む
@@ -66,6 +68,8 @@ class DataProvider:
         gyro_max_timestamp = self.gyro_df["snesor_timestamp"].max()
         self.max_timestamp = min(acc_max_timestamp, gyro_max_timestamp)
 
+        self.offline = offline
+
     def _filter_by_timestamp(self, df, timestamp, window, only_end=True):
         """
         タイムスタンプでデータをフィルタリングする
@@ -94,10 +98,19 @@ class DataProvider:
         """
         イテレータの次の要素を返す
         """
-
         # 現在のタイムスタンプがデータの範囲を超えている場合は例外を投げる
         if self.current_timestamp >= self.max_timestamp:
             raise StopIteration
+
+        if self.offline:
+            # オフラインモードでは、全データを一度に返す
+            self.current_timestamp = self.max_timestamp
+            return (
+                self.acce_df.copy(),
+                self.gyro_df.copy(),
+                self.acce_df.copy(),
+                self.gyro_df.copy(),
+            )
 
         # 新たに取得した範囲でデータを取得
         acce_df = self._filter_by_timestamp(

@@ -14,7 +14,7 @@ def main():
     gyro_file = src_dir / "data" / "gyro.csv"
     map_file = src_dir / "map" / "miraikan_5.bmp"
 
-    dataprovider = DataProvider(acce_file=acce_file, gyro_file=gyro_file, maxwait=0.5)
+    dataprovider = DataProvider(acce_file=acce_file, gyro_file=gyro_file, maxwait=0.5,offline=True)
     results = Results(
         map_file=map_file, initial_position=Position(41.368, -10.047, 0.935)
     )
@@ -22,8 +22,8 @@ def main():
     window_acc = 60
     window_gyro = 60
     peak_distance = 30
-    peak_height = 0.3
-
+    peak_height = 1
+    init_angle = np.deg2rad(80)
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
         acce_fs = acce_all_df["app_timestamp"].count() / (
             acce_all_df["app_timestamp"].max() - acce_all_df["app_timestamp"].min()
@@ -40,7 +40,7 @@ def main():
             gyro_all_df[["x", "y", "z"]].values, axis=1
         )
 
-        gyro_all_df["angle"] = gyro_all_df["norm"].cumsum() / gyro_fs
+        gyro_all_df["angle"] = gyro_all_df["x"].cumsum() / gyro_fs
 
         acce_all_df["low_norm"] = acce_all_df["norm"].rolling(window=window_acc).mean()
         gyro_all_df["low_x"] = gyro_all_df["x"].rolling(window=window_gyro).mean()
@@ -57,19 +57,19 @@ def main():
         )
 
 
-        step = 0.3
+        step = 0.4
         points = [results[0]]
         for p in peaks:
             time = acce_all_df["app_timestamp"][p]
-            low_angle = gyro_all_df["low_angle"].sub(time).abs().idxmin()
+            low_angle = gyro_all_df["app_timestamp"].sub(time).abs().idxmin()
             
-            x = step * np.cos(gyro_all_df["low_angle"][low_angle] * 1.2) + points[-1][0]
-            y = step * np.sin(gyro_all_df["low_angle"][low_angle] * 1.2) + points[-1][1]
+            x = step * np.cos(gyro_all_df["angle"][low_angle]+init_angle ) + points[-1][0]
+            y = step * np.sin(gyro_all_df["angle"][low_angle]+init_angle ) + points[-1][1]
 
             points.append(Position(x, y, results[0].z))
             
 
-        results.append(points[-1])
+        results.results= points
         results.save(acce_all_df, gyro_all_df, peaks)
     
     # マップに推定結果をプロット
