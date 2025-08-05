@@ -91,7 +91,6 @@ class Results:
     def init_position(self) -> Position:
         """
         初期位置を返す
-        オフラインモードでは、データの最初のタイムスタンプに基づく
         """
         return self[0]
 
