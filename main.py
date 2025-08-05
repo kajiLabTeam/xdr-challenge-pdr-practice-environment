@@ -65,7 +65,7 @@ def main():
             height=peak_height,
         )
 
-        track = [results[0]]
+        track = [results.init_position]
         for peak in peaks:
             time = acce_all_df["app_timestamp"][peak]
             gyro_i = gyro_all_df["app_timestamp"].sub(time).abs().idxmin()
