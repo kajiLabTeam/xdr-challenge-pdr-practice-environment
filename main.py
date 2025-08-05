@@ -48,11 +48,13 @@ def main():
         gyro_all_df["angle"] = np.cumsum(gyro_all_df["x"]) / gyro_fs
 
         # 移動平均フィルタ
+        window_acc_frame = int(window_acc_sec * acce_fs)
+        window_gyro_frame = int(window_gyro_sec * gyro_fs)
         acce_all_df["low_norm"] = (
-            acce_all_df["norm"].rolling(window=window_acc_sec * acce_fs).mean()
+            acce_all_df["norm"].rolling(window=window_acc_frame).mean()
         )
         gyro_all_df["low_angle"] = (
-            gyro_all_df["angle"].rolling(window=window_gyro_sec * gyro_fs).mean()
+            gyro_all_df["angle"].rolling(window=window_gyro_frame).mean()
         )
 
         # ピークの検出とプロット
