@@ -13,7 +13,7 @@ from src.type import Position
 
 class Results:
     map_file = "miraikan_5.bmp"
-    results: list[Position] = []
+    track: list[Position] = []
 
     map_origin = (-5.625, -12.75)
     map_ppm = 100
@@ -23,26 +23,32 @@ class Results:
         初期化処理
         推定結果を保存するリストを初期化する
         """
-        self.results = [initial_position]
+        self.track = [initial_position]
         self.bitmap_array = np.array(Image.open(map_file)) / 255.0
+
+    def __getitem__(self, index: int) -> Position:
+        """
+        推定結果を取得する
+        """
+        return self.track[index]
 
     def append(self, position: Position):
         """
         推定結果を保存する
         """
-        self.results.append(position)
+        self.track.append(position)
 
     def reset(self):
         """
         推定結果をリセットする
         """
-        self.results = []
+        self.track = []
 
     def to_dataframe(self):
         """
         推定結果を取得する
         """
-        return pd.DataFrame(self.results)
+        return pd.DataFrame(self.track)
 
     def plot_map(self, filename=None):
         """
@@ -80,9 +86,3 @@ class Results:
             plt.savefig(filename)
         else:
             plt.show()
-
-    def __getitem__(self, index):
-        """
-        推定結果を取得する
-        """
-        return self.results[index]
