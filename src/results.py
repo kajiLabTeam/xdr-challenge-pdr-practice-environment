@@ -86,3 +86,17 @@ class Results:
             plt.savefig(filename)
         else:
             plt.show()
+
+    @property
+    def init_position(self) -> Position:
+        """
+        初期位置を返す
+        """
+        return self[0]
+
+    @property
+    def final_position(self) -> Position:
+        """
+        最終位置を返す
+        """
+        return self.track[-1]
