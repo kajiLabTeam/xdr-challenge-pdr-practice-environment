@@ -66,9 +66,21 @@ def main():
         )
 
         track = [results.init_position]
+        gyro_timestamps = gyro_all_df["app_timestamp"].values
         for peak in peaks:
             time = acce_all_df["app_timestamp"][peak]
-            gyro_i = gyro_all_df["app_timestamp"].sub(time).abs().idxmin()
+            idx = np.searchsorted(gyro_timestamps, time)
+            if idx == 0:
+                gyro_i = gyro_all_df.index[0]
+            elif idx == len(gyro_timestamps):
+                gyro_i = gyro_all_df.index[-1]
+            else:
+                before = gyro_timestamps[idx - 1]
+                after = gyro_timestamps[idx]
+                if abs(time - before) <= abs(time - after):
+                    gyro_i = gyro_all_df.index[idx - 1]
+                else:
+                    gyro_i = gyro_all_df.index[idx]
 
             x = step * np.cos(gyro_all_df["angle"][gyro_i] + init_angle) + track[-1][0]
             y = step * np.sin(gyro_all_df["angle"][gyro_i] + init_angle) + track[-1][1]
