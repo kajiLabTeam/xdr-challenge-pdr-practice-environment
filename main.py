@@ -58,9 +58,10 @@ def main():
         )
 
         # ピークの検出とプロット
+        distance_frame = int(peak_distance_sec * acce_fs)
         peaks, _ = signal.find_peaks(
             acce_all_df["low_norm"],
-            distance=acce_fs * peak_distance_sec,
+            distance=distance_frame,
             height=peak_height,
         )
 
