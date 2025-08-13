@@ -4,6 +4,7 @@ from scipy import signal
 from src.results import Results
 from src.data_provider import DataProvider
 from src.type import Position
+import math
 
 
 def main():
@@ -25,10 +26,11 @@ def main():
 
     window_acc_sec = 1.0  # 加速度の移動平均フィルタのウィンドウサイズ（秒）
     window_gyro_sec = 1.0  # 角速度の移動平均フィルタのウィンドウサイズ（秒）
-    step = 0.4  # 歩幅（メートル）
     peak_distance_sec = 0.5  # ピーク検出の最小距離（秒）
     peak_height = 1.0  # ピーク検出の最小高さ
-    init_angle = np.deg2rad(80)  # 初期角度（ラジアン）
+    init_angle = np.deg2rad(72)  # 初期角度（ラジアン）
+    K = 0.5  # Weinbergモデルの定数K（環境に応じて調整が必要）
+    angle_correction_factor = 1.2 # 元コードにあった角度補正係数
 
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
         # サンプリング周波数の計算
@@ -39,7 +41,7 @@ def main():
             gyro_all_df["app_timestamp"].max() - gyro_all_df["app_timestamp"].min()
         )
 
-        # ノルムの計算
+        # ノルムの計算 (フィルタリング前の生データとして使用)
         acce_all_df["norm"] = (
             acce_all_df["x"] ** 2 + acce_all_df["y"] ** 2 + acce_all_df["z"] ** 2
         ) ** (1 / 2)
@@ -51,13 +53,13 @@ def main():
         window_acc_frame = int(window_acc_sec * acce_fs)
         window_gyro_frame = int(window_gyro_sec * gyro_fs)
         acce_all_df["low_norm"] = (
-            acce_all_df["norm"].rolling(window=window_acc_frame).mean()
+            acce_all_df["norm"].rolling(window=window_acc_frame, min_periods=1).mean()
         )
         gyro_all_df["low_angle"] = (
-            gyro_all_df["angle"].rolling(window=window_gyro_frame).mean()
+            gyro_all_df["angle"].rolling(window=window_gyro_frame, min_periods=1).mean()
         )
 
-        # ピークの検出とプロット
+        # ピークの検出（フィルタリング後のデータを使用）
         distance_frame = int(peak_distance_sec * acce_fs)
         peaks, _ = signal.find_peaks(
             acce_all_df["low_norm"],
@@ -65,9 +67,33 @@ def main():
             height=peak_height,
         )
 
+        if len(peaks) == 0:
+            continue
+            
+        # Weinbergによる歩数推定
+        detected_steps = []
+        acc_norm_values = acce_all_df["norm"].values # 計算を高速化するためnumpy配列に変換
+        for i in range(len(peaks)):
+            # 各ピーク間の区間を設定
+            start_i = peaks[i - 1] if i > 0 else 0
+            end_i = peaks[i]
+
+            # 区間内の加速度ノルムの最大値と最小値を取得
+            range_acc = acc_norm_values[start_i:end_i]
+            if range_acc.size == 0:
+                # 区間にデータがない場合（ピークが連続した場合など）は前の歩幅を流用
+                stride = detected_steps[-1] if detected_steps else 0.4
+            else:
+                max_acc = np.max(range_acc)
+                min_acc = np.min(range_acc)
+                # Weinbergの式で歩幅を計算
+                stride = K * (math.pow(max_acc - min_acc, 1/4.0))
+
+            detected_steps.append(stride)
+        # --- 軌跡の計算 ---
         track = [results.init_position]
         gyro_timestamps = gyro_all_df["app_timestamp"].values
-        for peak in peaks:
+        for i, peak in enumerate(peaks): # enumerateでインデックスを取得
             time = acce_all_df["app_timestamp"][peak]
             idx = np.searchsorted(gyro_timestamps, time)
             if idx == 0:
@@ -82,8 +108,14 @@ def main():
                 else:
                     gyro_i = gyro_all_df.index[idx]
 
-            x = step * np.cos(gyro_all_df["angle"][gyro_i] + init_angle) + track[-1][0]
-            y = step * np.sin(gyro_all_df["angle"][gyro_i] + init_angle) + track[-1][1]
+            # Weinbergモデルで計算した歩幅を使用
+            step = detected_steps[i]
+
+            # 座標更新 (元のコードに合わせてフィルタリング後の角度と補正係数を使用)
+            # Positionクラスの属性(x, y)にアクセスするよう修正
+            angle = gyro_all_df["low_angle"][gyro_i] * angle_correction_factor + init_angle
+            x = step * np.cos(angle) + track[-1].x
+            y = step * np.sin(angle) + track[-1].y
 
             track.append(Position(x, y, 0))
 
