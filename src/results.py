@@ -12,7 +12,7 @@ from src.type import Position
 
 
 class Results:
-    map_file = "miraikan_5.bmp"
+    map_file = "matching.png"
     results: list[Position] = []
 
     saved_acc_all_df: pd.DataFrame
@@ -140,7 +140,6 @@ class Results:
         ax3.set_xlabel("time[s]")
         ax3.set_ylabel("angle X[rad]")
 
-        plt.show()
 
     def __getitem__(self, index):
         """
