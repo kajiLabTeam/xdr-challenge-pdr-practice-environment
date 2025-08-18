@@ -12,8 +12,12 @@ from src.type import Position
 
 
 class Results:
-    map_file = "miraikan_5.bmp"
+    map_file = "matching.png"
     track: list[Position] = []
+
+    saved_acc_all_df: pd.DataFrame
+    saved_gyro_all_df: pd.DataFrame
+    saved_peaks: list[int] = []
 
     map_origin = (-5.625, -12.75)
     map_ppm = 100
@@ -43,6 +47,16 @@ class Results:
         推定結果をリセットする
         """
         self.track = []
+
+    def save(
+        self, acc_all_df: pd.DataFrame, gyro_all_df: pd.DataFrame, peaks: list[int]
+    ):
+        """
+        データを保存する
+        """
+        self.saved_acc_all_df = acc_all_df
+        self.saved_gyro_all_df = gyro_all_df
+        self.saved_peaks = peaks
 
     def to_dataframe(self):
         """
@@ -92,11 +106,53 @@ class Results:
         """
         初期位置を返す
         """
-        return self[0]
+        return self.track[0]
 
     @property
     def final_position(self) -> Position:
-        """
-        最終位置を返す
-        """
         return self.track[-1]
+
+    def plot(self):
+        if self.saved_acc_all_df is None:
+            return
+        if self.saved_gyro_all_df is None:
+            return
+
+        plt.subplots_adjust(hspace=0.3)
+        fig = plt.figure(figsize=(5, 10))
+
+        # 加速度（ノルム）のプロット
+        ax1 = fig.add_subplot(3, 1, 1)
+        ax1.plot(
+            self.saved_acc_all_df["app_timestamp"], self.saved_acc_all_df["low_norm"]
+        )
+        ax1.set_title("加速度（ノルム）")
+        ax1.set_xlabel("time[s]")
+        ax1.set_ylabel("norm[m/s^2]")
+
+        # ピークの検出とプロット
+        ax1.scatter(
+            self.saved_acc_all_df["app_timestamp"][self.saved_peaks],
+            self.saved_acc_all_df["low_norm"][self.saved_peaks],
+            s=30,
+            color="red",
+            zorder=2,
+        )
+
+        # 角速度（x軸）のプロット
+        ax2 = fig.add_subplot(3, 1, 2)
+        ax2.plot(
+            self.saved_gyro_all_df["app_timestamp"], self.saved_gyro_all_df["low_x"]
+        )
+        ax2.set_title("角速度（x軸）")
+        ax2.set_xlabel("time[s]")
+        ax2.set_ylabel("Gyro X[rad/s]")
+
+        # 角度（x軸）のプロット
+        ax3 = fig.add_subplot(3, 1, 3)
+        ax3.plot(
+            self.saved_gyro_all_df["app_timestamp"], self.saved_gyro_all_df["low_angle"]
+        )
+        ax3.set_title("角度（x軸）")
+        ax3.set_xlabel("time[s]")
+        ax3.set_ylabel("angle X[rad]")
