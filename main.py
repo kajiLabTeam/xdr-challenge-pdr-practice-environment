@@ -17,7 +17,7 @@ MAP_RESOLUTION = 0.01 # この値を実際のマップに合わせて調整し�
 
 # 2. マップの原点ピクセル座標 (PDR座標系の(0,0)がマップ画像のどのピクセルに対応するか)
 # 左上を(0,0)とします。
-MAP_ORIGIN_X_IN_PIXELS = 560
+MAP_ORIGIN_X_IN_PIXELS = 565
 MAP_ORIGIN_Y_IN_PIXELS = 1480
 
 # 3. 通行可能エリアの色の閾値 (0:黒 〜 255:白)
@@ -26,7 +26,7 @@ WALKABLE_THRESHOLD = 200
 
 # 4. 最近傍探索範囲 (ピクセル)
 # 推定位置が壁の中だった場合に、この範囲で最も近い通行可能エリアを探す
-NEAREST_SEARCH_RANGE = 50 # ピクセル単位
+NEAREST_SEARCH_RANGE = 40 # ピクセル単位
 
 def world_to_pixel(x, y):
     """実世界座標(メートル)をピクセル座標に変換する"""
@@ -94,10 +94,10 @@ def main():
     src_dir = Path().resolve()
     acce_file = src_dir / "data" / "acce.csv"
     gyro_file = src_dir / "data" / "gyro.csv"
-    map_file = src_dir / "map" / "matching.png"
+    map_file = src_dir / "map" / "matching2.png"
     
     # マップマッチング用の画像ファイルをロード
-    matching_map_file = src_dir / "map" / "matching.png"
+    matching_map_file = src_dir / "map" / "matching2.png"
     try:
         # グレースケールで読み込む
         map_image = Image.open(matching_map_file).convert("L")
@@ -168,6 +168,7 @@ def main():
 
         results.results = points
         results.save(acce_all_df, gyro_all_df, peaks)
+
     
     # マップに推定結果をプロット
     results.plot_map()
