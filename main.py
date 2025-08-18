@@ -166,7 +166,7 @@ def main():
             # 補正後の位置のみをリストに追加
             points.append(matched_position)
 
-        results.results = points
+        results.track = points
         results.save(acce_all_df, gyro_all_df, peaks)
 
     

@@ -13,7 +13,7 @@ from src.type import Position
 
 class Results:
     map_file = "matching.png"
-    results: list[Position] = []
+    track: list[Position] = []
 
     saved_acc_all_df: pd.DataFrame
     saved_gyro_all_df: pd.DataFrame
@@ -27,20 +27,26 @@ class Results:
         初期化処理
         推定結果を保存するリストを初期化する
         """
-        self.results = [initial_position]
+        self.track = [initial_position]
         self.bitmap_array = np.array(Image.open(map_file)) / 255.0
+
+    def __getitem__(self, index: int) -> Position:
+        """
+        推定結果を取得する
+        """
+        return self.track[index]
 
     def append(self, position: Position):
         """
         推定結果を保存する
         """
-        self.results.append(position)
+        self.track.append(position)
 
     def reset(self):
         """
         推定結果をリセットする
         """
-        self.results = []
+        self.track = []
 
     def save(
         self, acc_all_df: pd.DataFrame, gyro_all_df: pd.DataFrame, peaks: list[int]
@@ -56,7 +62,7 @@ class Results:
         """
         推定結果を取得する
         """
-        return pd.DataFrame(self.results)
+        return pd.DataFrame(self.track)
 
     def plot_map(self, filename=None):
         """
@@ -94,6 +100,17 @@ class Results:
             plt.savefig(filename)
         else:
             plt.show()
+
+    @property
+    def init_position(self) -> Position:
+        """
+        初期位置を返す
+        """
+        return self.track[0]
+
+    @property
+    def final_position(self) -> Position:
+        return self.track[-1]
 
     def plot(self):
         if self.saved_acc_all_df is None:
@@ -139,10 +156,3 @@ class Results:
         ax3.set_title("角度（x軸）")
         ax3.set_xlabel("time[s]")
         ax3.set_ylabel("angle X[rad]")
-
-
-    def __getitem__(self, index):
-        """
-        推定結果を取得する
-        """
-        return self.results[index]
