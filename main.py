@@ -1,4 +1,3 @@
-import math
 from pathlib import Path
 import numpy as np
 from scipy import signal
@@ -29,17 +28,8 @@ def main():
     step = 0.4  # 歩幅（メートル）
     peak_distance_sec = 0.5  # ピーク検出の最小距離（秒）
     peak_height = 1.0  # ピーク検出の最小高さ
-    #ピッチ角とロール角算出(初期姿勢)
-    init_xangle = math.degrees(math.atan(dataprovider.acce_df["y"].at[0] / math.sqrt(dataprovider.acce_df["x"].at[0] ** 2 + dataprovider.acce_df["z"].at[0] ** 2)))
-    init_yangle = math.degrees(math.atan(-dataprovider.acce_df["x"].at[0] / dataprovider.acce_df["z"].at[0]))
-    
-    #init_angle = np.deg2rad(80)  # 初期角度（ラジアン）
-    #print(init_xangle)
-    #print(init_yangle)
-    
-    #回転後の行列を格納
-    rotated_acc = []
-    
+    init_angle = np.deg2rad(80)  # 初期角度（ラジアン）
+
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
         # サンプリング周波数の計算
         acce_fs = acce_all_df["app_timestamp"].count() / (
@@ -53,42 +43,6 @@ def main():
         acce_all_df["norm"] = (
             acce_all_df["x"] ** 2 + acce_all_df["y"] ** 2 + acce_all_df["z"] ** 2
         ) ** (1 / 2)
-
-        #回転行列
-        r_x = np.array([
-            [1, 0, 0],
-            [0, np.cos(acce_all_df["x"]), -np.sin(acce_all_df["x"])],
-            [0, np.sin(acce_all_df["x"]), np.cos(acce_all_df["x"])]
-        ])
-        r_y = np.array([
-            [np.cos(acce_all_df["y"]), 0, np.sin(acce_all_df["y"])],
-            [0, 1, 0],
-            [-np.sin(acce_all_df["y"]), 0, np.cos(acce_all_df["y"])]
-        ])
-        r_z = np.array([
-            [np.cos(acce_all_df["z"]), -np.sin(acce_all_df["z"]), 0],
-            [np.sin(acce_all_df["z"]), np.cos(acce_all_df["z"]), 0],
-            [0, 0, 1]
-        ])
-        
-        #回転行列を使って世界座標に変換
-        x = acce_all_df["x"]
-        y = acce_all_df["y"]
-        z = acce_all_df["z"]
-        vec = np.array([x, y, z])
-        vec = np.dot(r_x, vec)
-        vec = np.dot(r_y, vec)
-        vec = np.dot(r_z, vec)
-
-        rotated_acc.append([
-            acce_all_df["app_timestamp"],
-            vec[0],
-            vec[1],
-            vec[2],
-        ])
-
-        #加速度、角速度それぞれで姿勢角を算出
-        #2つの姿勢角から相補フィルタを作成し適用
 
         # 角度の計算
         gyro_all_df["angle"] = np.cumsum(gyro_all_df["x"]) / gyro_fs
@@ -128,18 +82,15 @@ def main():
                 else:
                     gyro_i = gyro_all_df.index[idx]
 
-            x = step * np.cos(gyro_all_df["angle"][gyro_i] + init_xangle) + track[-1][0]
-            y = step * np.sin(gyro_all_df["angle"][gyro_i] + init_yangle) + track[-1][1]
+            x = step * np.cos(gyro_all_df["angle"][gyro_i] + init_angle) + track[-1][0]
+            y = step * np.sin(gyro_all_df["angle"][gyro_i] + init_angle) + track[-1][1]
 
             track.append(Position(x, y, 0))
 
         # 推定結果を保存
         results.track = track
 
-    #results.plot_map()
-
-    for a in rotated_acc:
-        print(a)
+    results.plot_map()
 
 
 if __name__ == "__main__":
