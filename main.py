@@ -28,9 +28,9 @@ def main():
     window_gyro_sec = 1.0  # 角速度の移動平均フィルタのウィンドウサイズ（秒）
     peak_distance_sec = 0.5  # ピーク検出の最小距離（秒）
     peak_height = 1.0  # ピーク検出の最小高さ
-    init_angle = np.deg2rad(72)  # 初期角度（ラジアン）
-    K = 0.5  # Weinbergモデルの定数K（環境に応じて調整が必要）
-    angle_correction_factor = 1.2 # 元コードにあった角度補正係数
+    init_angle = np.deg2rad(68)  # 初期角度（ラジアン）
+    K = 0.45  # Weinbergモデルの定数K
+    angle_correction_factor = 1.2 # 角度補正係数
 
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
         # サンプリング周波数の計算
@@ -90,7 +90,7 @@ def main():
                 stride = K * (math.pow(max_acc - min_acc, 1/4.0))
 
             detected_steps.append(stride)
-        # --- 軌跡の計算 ---
+        # 軌跡の計算
         track = [results.init_position]
         gyro_timestamps = gyro_all_df["app_timestamp"].values
         for i, peak in enumerate(peaks): # enumerateでインデックスを取得
@@ -111,8 +111,7 @@ def main():
             # Weinbergモデルで計算した歩幅を使用
             step = detected_steps[i]
 
-            # 座標更新 (元のコードに合わせてフィルタリング後の角度と補正係数を使用)
-            # Positionクラスの属性(x, y)にアクセスするよう修正
+            # 座標更新
             angle = gyro_all_df["low_angle"][gyro_i] * angle_correction_factor + init_angle
             x = step * np.cos(angle) + track[-1].x
             y = step * np.sin(angle) + track[-1].y
