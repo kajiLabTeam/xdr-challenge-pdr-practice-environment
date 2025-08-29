@@ -20,7 +20,7 @@ def main():
     )
     results = Results(
         map_file=map_file,
-        initial_position=Position(41.368, -10.047, 0),
+        initial_position=Position(-0.953284566, 3.204975612, 1.102339697),
     )
 
     window_acc_sec = 1.0  # 加速度の移動平均フィルタのウィンドウサイズ（秒）
@@ -28,7 +28,7 @@ def main():
     step = 0.4  # 歩幅（メートル）
     peak_distance_sec = 0.5  # ピーク検出の最小距離（秒）
     peak_height = 1.0  # ピーク検出の最小高さ
-    init_angle = np.deg2rad(80)  # 初期角度（ラジアン）
+    init_angle = np.deg2rad(10)  # 初期角度（ラジアン）
 
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
         # サンプリング周波数の計算
@@ -68,7 +68,7 @@ def main():
         track = [results.init_position]
         gyro_timestamps = gyro_all_df["app_timestamp"].values
         for peak in peaks:
-            time = acce_all_df["app_timestamp"][peak]
+            time = acce_all_df["app_timestamp"].iloc[peak]
             idx = np.searchsorted(gyro_timestamps, time)
             if idx == 0:
                 gyro_i = gyro_all_df.index[0]

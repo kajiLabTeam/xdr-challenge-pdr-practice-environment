@@ -64,8 +64,13 @@ class DataProvider:
             ],
         ).drop(columns=["_type"])
 
-        acc_max_timestamp = self.acce_df["snesor_timestamp"].max()
-        gyro_max_timestamp = self.gyro_df["snesor_timestamp"].max()
+        self.acce_df = self.acce_df[self.acce_df["app_timestamp"] >= 500]
+        self.gyro_df = self.gyro_df[self.gyro_df["app_timestamp"] >= 500]
+        self.acce_df["app_timestamp"] -= 500
+        self.gyro_df["app_timestamp"] -= 500
+
+        acc_max_timestamp = self.acce_df["app_timestamp"].max()
+        gyro_max_timestamp = self.gyro_df["app_timestamp"].max()
         self.max_timestamp = min(acc_max_timestamp, gyro_max_timestamp)
 
         self.offline = offline
