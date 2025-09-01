@@ -29,7 +29,7 @@ class DataProvider:
     data_dir = Path().resolve() / "data"
 
     def __init__(
-        self, acce_file: str | Path, gyro_file: str | Path, maxwait=0.5, offline=False
+        self, acce_file: str | Path, gyro_file: str | Path, maxwait=0.5, offline=False, start_timestamp=0
     ):
         """
         初期化処理
@@ -37,7 +37,8 @@ class DataProvider:
         """
         self.maxwait = maxwait
 
-        self.acce_df = pd.read_csv(
+        # ★★★ 変更点1: データを一度すべて読み込む ★★★
+        full_acce_df = pd.read_csv(
             self.data_dir / self.acce_file,
             sep=";",
             names=[
@@ -50,7 +51,7 @@ class DataProvider:
                 "accuracy",
             ],
         ).drop(columns=["_type"])
-        self.gyro_df = pd.read_csv(
+        full_gyro_df = pd.read_csv(
             self.data_dir / self.gyro_file,
             sep=";",
             names=[
@@ -63,7 +64,15 @@ class DataProvider:
                 "accuracy",
             ],
         ).drop(columns=["_type"])
-
+        
+        # ★★★ 変更点2: 指定されたタイムスタンプでデータをフィルタリング ★★★
+        self.acce_df = full_acce_df[full_acce_df["app_timestamp"] >= start_timestamp].copy()
+        self.gyro_df = full_gyro_df[full_gyro_df["app_timestamp"] >= start_timestamp].copy()
+        
+        # フィルタリング後にインデックスをリセット
+        self.acce_df.reset_index(drop=True, inplace=True)
+        self.gyro_df.reset_index(drop=True, inplace=True)
+       
         acc_max_timestamp = self.acce_df["snesor_timestamp"].max()
         gyro_max_timestamp = self.gyro_df["snesor_timestamp"].max()
         self.max_timestamp = min(acc_max_timestamp, gyro_max_timestamp)
@@ -91,7 +100,8 @@ class DataProvider:
             ]
 
     def __iter__(self):
-        self.current_timestamp = 0
+        # ★★★ 変更点3: イテレータの開始点をデータの先頭に設定 ★★★
+        self.current_timestamp = self.acce_df["app_timestamp"].min() if not self.acce_df.empty else 0
         return self
 
     def __next__(self):

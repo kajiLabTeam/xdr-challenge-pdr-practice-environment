@@ -19,14 +19,14 @@ WALKABLE_THRESHOLD = 200
 def world_to_pixel(x, y):
     """実世界座標(メートル)をピクセル座標に変換する"""
     pixel_x = int(MAP_ORIGIN_X_IN_PIXELS + x / MAP_RESOLUTION)
-    pixel_y = int(MAP_ORIGIN_Y_IN_PIXELS - y / MAP_RESOLUTION) # Y軸は逆
+    pixel_y = int(MAP_ORIGIN_Y_IN_PIXELS - y / MAP_RESOLUTION)
     return pixel_x, pixel_y
 
 
 def pixel_to_world(pixel_x, pixel_y):
     """ピクセル座標を実世界座標(メートル)に変換する"""
     x = (pixel_x - MAP_ORIGIN_X_IN_PIXELS) * MAP_RESOLUTION
-    y = (MAP_ORIGIN_Y_IN_PIXELS - pixel_y) * MAP_RESOLUTION # Y軸は逆
+    y = (MAP_ORIGIN_Y_IN_PIXELS - pixel_y) * MAP_RESOLUTION
     return x, y
 
 
@@ -44,7 +44,7 @@ def map_matching(x, y, z, last_position, current_pdr_angle, map_image):
     """
     px, py = world_to_pixel(x, y)
     last_px, last_py = world_to_pixel(last_position.x, last_position.y)
-
+    
     last_walkable_px, last_walkable_py = last_px, last_py
     collision_occured = False
 
@@ -68,7 +68,7 @@ def map_matching(x, y, z, last_position, current_pdr_angle, map_image):
 
     new_wx, new_wy = pixel_to_world(last_walkable_px, last_walkable_py)
     corrected_position = Position(new_wx, new_wy, z)
-    turn_direction = 0  # 0: 直進, -1: 左に補正, 1: 右に補正
+    turn_direction = 0
 
     if collision_occured:
         check_px, check_py = last_walkable_px, last_walkable_py
@@ -77,7 +77,7 @@ def map_matching(x, y, z, last_position, current_pdr_angle, map_image):
             "N": (check_px, check_py - 1), "S": (check_px, check_py + 1)
         }
         walkable_neighbors = {d: is_walkable(x, y, map_image) for d, (x, y) in neighbors.items()}
-
+        
         is_horz_path = walkable_neighbors["E"] or walkable_neighbors["W"]
         is_vert_path = walkable_neighbors["N"] or walkable_neighbors["S"]
         pdr_angle_deg = np.rad2deg(current_pdr_angle) % 360
@@ -94,7 +94,7 @@ def map_matching(x, y, z, last_position, current_pdr_angle, map_image):
 
         if wall_angle_rad is not None:
             diff = wall_angle_rad - current_pdr_angle
-            diff = (diff + np.pi) % (2 * np.pi) - np.pi
+            diff = (diff + np.pi) % (2 * np.pi) - np.pi 
             turn_direction = np.sign(diff)
 
     return corrected_position, turn_direction
@@ -105,43 +105,47 @@ def main():
     acce_file = src_dir / "data" / "acce.csv"
     gyro_file = src_dir / "data" / "gyro.csv"
     map_file = src_dir / "map" / "matching.png"
-
+    
     try:
         map_image = Image.open(map_file).convert("L")
     except FileNotFoundError:
         print(f"エラー: マップマッチング用の画像ファイルが見つかりません: {map_file}")
         return
 
-    dataprovider = DataProvider(acce_file=acce_file, gyro_file=gyro_file, maxwait=0.5, offline=True)
-    results = Results(map_file=map_file, initial_position=Position(41.368, -10.047, 0.935))
+    # ★★★ 変更点1: DataProviderに start_timestamp=500 を指定 ★★★
+    dataprovider = DataProvider(acce_file=acce_file, gyro_file=gyro_file, maxwait=0.5, offline=True, start_timestamp=625)
+    
+    # ★★★ 変更点2: タイムスタンプ500時点での適切な初期値を設定 ★★★
+    results = Results(map_file=map_file, initial_position=Position(22.3, -5, 0.902339697))
 
     window_acc, window_gyro = 60, 60
     peak_distance, peak_height = 30, 1
-    init_angle = np.deg2rad(80)
-
+    # ★★★ 変更点3: 初期角度も調整 ★★★
+    init_angle = np.deg2rad(-140)
+    
     for acce_df, gyro_df, acce_all_df, gyro_all_df in dataprovider:
+        # データが空の場合はスキップ
+        if acce_all_df.empty or gyro_all_df.empty:
+            print("指定されたタイムスタンプ以降のデータがありません。")
+            continue
+
         acce_fs = acce_all_df["app_timestamp"].count() / (acce_all_df["app_timestamp"].max() - acce_all_df["app_timestamp"].min())
         gyro_fs = gyro_all_df["app_timestamp"].count() / (gyro_all_df["app_timestamp"].max() - gyro_all_df["app_timestamp"].min())
         acce_all_df["norm"] = np.linalg.norm(acce_all_df[["x", "y", "z"]].values, axis=1)
         gyro_all_df["angle"] = gyro_all_df["x"].cumsum() / gyro_fs
         acce_all_df["low_norm"] = acce_all_df["norm"].rolling(window=window_acc).mean()
         peaks, _ = signal.find_peaks(acce_all_df["low_norm"], distance=peak_distance, height=peak_height)
-
+        
         step = 0.38
         
-        # ★★★ 変更点1: タイムスタンプと位置を一緒に保存するリストを用意 ★★★
-        points_with_time = []
-        # 初期位置のタイムスタンプを取得（データセットの最初のタイムスタンプ）
-        initial_time = acce_all_df["app_timestamp"].iloc[0]
-        points_with_time.append((initial_time, results[0]))
-
+        # ★★★ 変更点4: フィルタリングが不要になったため、シンプルなリストに戻す ★★★
+        points = [results[0]]
 
         for p in peaks:
             time = acce_all_df["app_timestamp"][p]
             low_angle_idx = gyro_all_df["app_timestamp"].sub(time).abs().idxmin()
             
-            # 最後の位置情報を取得（points_with_timeから位置だけ取り出す）
-            last_position = points_with_time[-1][1]
+            last_position = points[-1]
             gyro_angle = gyro_all_df["angle"][low_angle_idx]
             current_pdr_angle = gyro_angle + init_angle
 
@@ -149,28 +153,17 @@ def main():
             y_pdr = step * np.sin(current_pdr_angle) + last_position.y
 
             matched_position, turn_direction = map_matching(x_pdr, y_pdr, results[0].z, last_position, current_pdr_angle, map_image)
-
+            
             if turn_direction != 0:
-                correction_rad = np.deg2rad(10)
+                correction_rad = np.deg2rad(3)
                 init_angle += correction_rad * turn_direction
             
-            # ★★★ 変更点2: タイムスタンプと補正後の位置をタプルで保存 ★★★
-            points_with_time.append((time, matched_position))
-
+            points.append(matched_position)
         
-        # ### プロット前にタイムスタンプでフィルタリング ###
-        # ★★★ 変更点3: timestampが625以上のデータだけを抽出 ★★★
-        
-        filtered_points = []
-        for time, position in points_with_time:
-            if time >= 625:
-                filtered_points.append(position)
-        
-        # フィルタリング後の軌跡をプロット対象として設定
-        results.track = filtered_points
+        # ★★★ 変更点5: 計算結果をそのままプロット対象とする ★★★
+        results.track = points
         results.save(acce_all_df, gyro_all_df, peaks)
-
-    # マップに推定結果をプロット
+    
     results.plot_map()
 
 if __name__ == "__main__":
