@@ -26,7 +26,6 @@ def main():
     )
 
     window_acc_sec = 1.0  # 加速度の移動平均フィルタのウィンドウサイズ（秒）
-    window_gyro_sec = 1.0  # 角速度の移動平均フィルタのウィンドウサイズ（秒）
     step = 0.4  # 歩幅（メートル）
     peak_distance_sec = 0.5  # ピーク検出の最小距離（秒）
     peak_height = 1.0  # ピーク検出の最小高さ
@@ -120,9 +119,9 @@ def main():
         )
         all_df[["global_gyro_x", "global_gyro_y", "global_gyro_z"]] = all_df.apply(
             lambda row: pd.Series(
-                row["r_z"]
+                row["r_x"]
                 @ row["r_y"]
-                @ row["r_x"]
+                @ row["r_z"]
                 @ np.array([row["gyro_x"], row["gyro_y"], row["gyro_z"]])
             ),
             axis=1,
@@ -134,13 +133,32 @@ def main():
         )
 
         # 角度の計算
-        all_df["angle"] = np.cumsum(all_df["global_gyro_x"]) / fs
+        all_df["angle"] = np.cumsum(all_df["global_gyro_y"]) / fs
+        
+        #進行方向補正の回転行列
+        all_df["r_z_cor"] = all_df.apply(
+            lambda row: np.array(
+                [
+                    [np.cos(row["angle"]), -np.sin(row["angle"]), 0],
+                    [np.sin(row["angle"]), np.cos(row["angle"]), 0],
+                    [0, 0, 1],
+                ]
+            ),
+            axis=1,
+        )
 
+        #進行方向補正
+        all_df[["global_acce_x", "global_acce_y", "global_acce_z"]] = all_df.apply(
+            lambda row: pd.Series(
+                row["r_z_cor"]
+                @ np.array([row["global_acce_x"], row["global_acce_y"], row["global_acce_z"]])
+            ),
+            axis=1,
+        )
+        
         # 移動平均フィルタ
         window_acc_frame = int(window_acc_sec * fs)
-        window_gyro_frame = int(window_gyro_sec * fs)
         all_df["low_norm"] = all_df["norm"].rolling(window=window_acc_frame).mean()
-        all_df["low_angle"] = all_df["angle"].rolling(window=window_gyro_frame).mean()
 
         # ピークの検出とプロット
         distance_frame = int(peak_distance_sec * fs)
@@ -184,9 +202,9 @@ def update_ori(norm, ori_x, ori_y, ori_z, gx, gy, gz):
     for i in range(1, len(norm)):
         # 歩行中の場合
         if norm[i] >= 9.9:
-            ori_x[i] = ori_x[i - 1] + gx[i]
-            ori_y[i] = ori_y[i - 1] + gy[i]
-            ori_z[i] = ori_z[i - 1] + gz[i]
+            ori_x[i] = ori_x[i - 1] + gx[i] - gx[i - 1]
+            ori_y[i] = ori_y[i - 1] + gy[i] - gy[i - 1]
+            ori_z[i] = ori_z[i - 1] + gz[i] - gz[i - 1]
     return ori_x, ori_y, ori_z
 
 
